@@ -15,7 +15,12 @@ RUN apt-get update && \
     python3.10 \
     python3.10-distutils \
     python3.10-dev \
+    curl \
+    git \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
 # Create proper symbolic links
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 2 && \
@@ -28,10 +33,10 @@ RUN update-alternatives --set python3 /usr/bin/python3.10
 RUN python3 -m pip install --upgrade pip
 
 # Install PyTorch with CUDA support
-RUN pip3 install torch torchvision torchaudio
+RUN pip3 install torch torchvision torchaudio feedparser python-dotenv sqlalchemy
 
 # Install Whisper and its dependencies
-RUN pip3 install git+https://github.com/openai/whisper.git
+RUN pip3 install git+https://github.com/m-bain/whisperx.git
 RUN pip3 install faster-whisper
 
 # Set the working directory
