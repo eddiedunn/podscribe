@@ -16,6 +16,22 @@ Host gpu-server
     ForwardAgent yes
 ```
 
+## 4. Connection Workflow
+1. **Connect via Remote-SSH**:
+   - Press `Ctrl+Shift+P` > "Remote-SSH: Connect to Host" > Select `gpu-server`
+   - Open your project folder on the remote server
+
+2. **Reopen in Container**:
+   - Press `Ctrl+Shift+P` > "Dev Containers: Reopen in Container"
+   - VS Code will build/start the container with GPU access
+
+## 5. GPU Verification
+In the container terminal:
+```bash
+nvidia-smi  # Should show GPU info
+python3 -c "import torch; print(torch.cuda.is_available())"  # Should return True
+```
+
 To build and run this Docker container:
 
 1. change into container directory.
