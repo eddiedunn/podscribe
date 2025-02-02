@@ -1,0 +1,4 @@
+SQLAlchemy
+feedparser
+python-dotenv
+whisperx
