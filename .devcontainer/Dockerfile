@@ -1,42 +1,40 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PATH=/usr/local/cuda-11.8/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
-
-# Install system dependencies
-RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    wget \
-    git \
+# Install prerequisites for adding repositories
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Miniconda
-ENV CONDA_DIR /opt/conda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p $CONDA_DIR && \
-    rm ~/miniconda.sh
-ENV PATH=$CONDA_DIR/bin:$PATH
+# Add Python 3.10 repository (PPA)
+RUN add-apt-repository -y ppa:deadsnakes/ppa
 
-# Create and activate Conda environment
-RUN conda create -n myenv python=3.9 -y
-ENV CONDA_DEFAULT_ENV=myenv
-ENV CONDA_PREFIX=$CONDA_DIR/envs/$CONDA_DEFAULT_ENV
-ENV PATH=$CONDA_PREFIX/bin:$PATH
+# Install Python 3.10 and system dependencies
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python3.10 \
+    python3.10-distutils \
+    python3.10-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch with CUDA 11.8 support (using system CUDA)
-RUN conda install -n myenv -y pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
-    pytorch-cuda=11.8 -c pytorch -c nvidia
+# Create proper symbolic links
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 2 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 
-RUN conda install -n myenv -y python-dotenv feedparser sqlalchemy
+# Set Python 3.10 as default
+RUN update-alternatives --set python3 /usr/bin/python3.10
 
-# Verify CUDA availability
-RUN python -c "import torch; \
-    print(f'CUDA available: {torch.cuda.is_available()}'); \
-    print(f'CUDA version: {torch.version.cuda}'); \
-    print(f'cuDNN version: {torch.backends.cudnn.version()}')"
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
 
+# Install PyTorch with CUDA support
+RUN pip3 install torch torchvision torchaudio
+
+# Install Whisper and its dependencies
+RUN pip3 install git+https://github.com/openai/whisper.git
+RUN pip3 install faster-whisper
+
+# Set the working directory
 WORKDIR /workspace
-CMD ["/bin/bash"]
+
+
