@@ -3,6 +3,10 @@ from podscribe.database import engine, SessionLocal
 from podscribe.podcast_rss import parse_rss_feed
 from podscribe.transcription import transcribe_episode
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 def init_db():
     Base.metadata.create_all(bind=engine)

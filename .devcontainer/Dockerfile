@@ -30,11 +30,13 @@ ENV PATH=$CONDA_PREFIX/bin:$PATH
 RUN conda install -n myenv -y pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
     pytorch-cuda=11.8 -c pytorch -c nvidia
 
+RUN conda install -n myenv -y python-dotenv feedparser sqlalchemy
+
 # Verify CUDA availability
 RUN python -c "import torch; \
     print(f'CUDA available: {torch.cuda.is_available()}'); \
     print(f'CUDA version: {torch.version.cuda}'); \
     print(f'cuDNN version: {torch.backends.cudnn.version()}')"
 
-WORKDIR /app
+WORKDIR /workspace
 CMD ["/bin/bash"]
