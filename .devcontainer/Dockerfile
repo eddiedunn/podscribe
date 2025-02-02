@@ -4,31 +4,37 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH=/usr/local/cuda-11.8/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
 
+# Install system dependencies
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     wget \
     git \
-    python3 \
-    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-RUN nvcc --version && \
-    ldconfig && \
-    echo "CUDA and cuDNN installed successfully"
+# Install Miniconda
+ENV CONDA_DIR /opt/conda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p $CONDA_DIR && \
+    rm ~/miniconda.sh
+ENV PATH=$CONDA_DIR/bin:$PATH
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcublas-11-8 \
-    libcublas-dev-11-8 \
-    && rm -rf /var/lib/apt/lists/*
+# Create and activate Conda environment
+RUN conda create -n myenv python=3.9 -y
+ENV CONDA_DEFAULT_ENV=myenv
+ENV CONDA_PREFIX=$CONDA_DIR/envs/$CONDA_DEFAULT_ENV
+ENV PATH=$CONDA_PREFIX/bin:$PATH
 
-RUN pip3 install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2 \
-    --index-url https://download.pytorch.org/whl/cu118
+# Install PyTorch with CUDA 11.8 support (using system CUDA)
+RUN conda install -n myenv -y pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
+    pytorch-cuda=11.8 -c pytorch -c nvidia
 
-RUN python3 -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('cuDNN version:', torch.backends.cudnn.version()); print('CUDA version:', torch.version.cuda)"
+# Verify CUDA availability
+RUN python -c "import torch; \
+    print(f'CUDA available: {torch.cuda.is_available()}'); \
+    print(f'CUDA version: {torch.version.cuda}'); \
+    print(f'cuDNN version: {torch.backends.cudnn.version()}')"
 
 WORKDIR /app
-
 CMD ["/bin/bash"]
-
