@@ -5,7 +5,9 @@ from podscribe.transcription import transcribe_episode
 from datetime import datetime
 from dotenv import load_dotenv
 import os
+import yaml
 
+# Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 def init_db():
@@ -36,23 +38,40 @@ def list_episodes(podcast_rss=None):
 
 def main():
     init_db()
-    
-    # Example usage
-    rss_url = "https://feeds.twit.tv/twit.xml"
-    podcast = parse_rss_feed(rss_url)
-    
-    # List all episodes for this podcast
-    episodes = list_episodes(rss_url)
-    
-    if episodes:
-        # Get the most recent episode that hasn't been transcribed yet
-        for episode in episodes:
-            if not episode.transcript:
-                print(f"\nTranscribing episode: {episode.title}")
-                transcribe_episode(episode.id)
-                break
-    else:
-        print("No episodes found")
+
+    # Load the YAML file containing RSS feed URLs
+    feeds_path = os.path.join(os.path.dirname(__file__), 'feeds.yaml')
+    try:
+        with open(feeds_path, 'r') as f:
+            feeds_data = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: {feeds_path} not found.")
+        return
+
+    rss_feeds = feeds_data.get("rss_feeds", [])
+    if not rss_feeds:
+        print("No RSS feeds found in the YAML file.")
+        return
+
+    # Process each RSS feed
+    for rss_url in rss_feeds:
+        print(f"\nProcessing feed: {rss_url}")
+
+        # Parse the podcast RSS feed
+        podcast = parse_rss_feed(rss_url)
+
+        # List all episodes for this podcast
+        episodes = list_episodes(rss_url)
+
+        if episodes:
+            # Transcribe the first episode that hasn't been transcribed yet
+            for episode in episodes:
+                if not episode.transcript:
+                    print(f"\nTranscribing episode: {episode.title}")
+                    transcribe_episode(episode.id)
+                    break
+        else:
+            print("No episodes found for this feed.")
 
 if __name__ == "__main__":
     main()
