@@ -2,3 +2,4 @@ SQLAlchemy
 feedparser
 python-dotenv
 whisperx
+diarized_transcriber @ git+ssh://git@github.com/eddiedunn/diarized_transcriber.git
