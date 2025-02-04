@@ -7,12 +7,20 @@ from podscribe.models import Podcast, Episode
 from podscribe.database import SessionLocal
 from podscribe.config import logger
 
-<<<<<<< HEAD
-def parse_rss_feed(rss_url):
-    """Parse a podcast RSS feed and store episodes in database."""
+
+def parse_rss_feed(rss_url: str) -> Optional[Podcast]:
+    """
+    Parse a podcast RSS feed and store episodes in database.
+
+    
+    Args:
+        rss_url: URL of the podcast RSS feed
+        
+    Returns:
+        Optional[Podcast]: The created or updated Podcast object
+    """
 
     try:
-        # Fetch the RSS feed manually
         headers = {
             "User-Agent": "Mozilla/5.0",
             "Accept-Charset": "utf-8",  # Request UTF-8
@@ -21,37 +29,9 @@ def parse_rss_feed(rss_url):
 
         # Force UTF-8 encoding (ignoring errors if needed)
         response.encoding = "utf-8"
-        feed_data = response.text  # Or response.content.decode("utf-8", errors="ignore")
-
-        # Parse the feed with feedparser
+        feed_data = response.text 
         feed = feedparser.parse(feed_data)
-
-        # Check for malformed feeds
-        if feed.bozo:
-            logger.error(f"Feed error for {rss_url}: {feed.bozo_exception}")
-
-
-
-    except requests.RequestException as e:
-        logger.error(f"Network error while fetching {rss_url}: {e}")
-        return None
-
-=======
-logger = logging.getLogger(__name__)
-
-def parse_rss_feed(rss_url: str) -> Optional[Podcast]:
-    """
-    Parse a podcast RSS feed and store episodes in database.
->>>>>>> f45f908 (from server)
-    
-    Args:
-        rss_url: URL of the podcast RSS feed
         
-    Returns:
-        Optional[Podcast]: The created or updated Podcast object
-    """
-    try:
-        feed = feedparser.parse(rss_url)
         if feed.bozo:  # feedparser's flag for malformed feeds
             logger.error(f"Feed error for {rss_url}: {feed.bozo_exception}")
             return None
