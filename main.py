@@ -1,22 +1,34 @@
+import logging
+import os
+import yaml
+from datetime import datetime
+from typing import List, Optional
+from dotenv import load_dotenv
 from podscribe.models import Base, Podcast, Episode
 from podscribe.database import engine, SessionLocal
 from podscribe.podcast_rss import parse_rss_feed
 from podscribe.transcription import transcribe_episode
-from datetime import datetime
-from dotenv import load_dotenv
-import os
-import yaml
 
-# Load environment variables
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-def init_db():
+def init_db() -> None:
+    """Initialize the database tables."""
     Base.metadata.create_all(bind=engine)
 
-def list_episodes(podcast_rss=None):
+def list_episodes(podcast_rss: Optional[str] = None) -> List[Episode]:
     """
     List all episodes, optionally filtered by podcast RSS URL.
-    Returns a list of episodes.
+    
+    Args:
+        podcast_rss: Optional RSS URL to filter by
+        
+    Returns:
+        List[Episode]: List of matching episodes
     """
     with SessionLocal() as session:
         query = session.query(Episode)
@@ -25,53 +37,75 @@ def list_episodes(podcast_rss=None):
         
         episodes = query.all()
         
-        print("\nEpisode List:")
-        print("-" * 50)
+        logger.info("\nEpisode List:")
+        logger.info("-" * 50)
         for ep in episodes:
-            print(f"ID: {ep.id}")
-            print(f"Title: {ep.title}")
-            print(f"Published: {ep.published_date}")
-            print(f"Has Transcript: {'Yes' if ep.transcript else 'No'}")
-            print("-" * 50)
+            logger.info(f"ID: {ep.id}")
+            logger.info(f"Title: {ep.title}")
+            logger.info(f"Published: {ep.published_date}")
+            logger.info(f"Has Transcript: {'Yes' if ep.transcript else 'No'}")
+            logger.info("-" * 50)
         
         return episodes
 
-def main():
-    init_db()
+def process_feed(rss_url: str) -> Optional[Podcast]:
+    """
+    Process a single RSS feed.
+    
+    Args:
+        rss_url: RSS feed URL to process
+        
+    Returns:
+        Optional[Podcast]: The processed podcast or None if failed
+    """
+    logger.info(f"Processing feed: {rss_url}")
+    
+    podcast = parse_rss_feed(rss_url)
+    if not podcast:
+        return None
+        
+    episodes = list_episodes(rss_url)
+    if episodes:
+        # Find first episode without transcript
+        for episode in episodes:
+            if not episode.transcript:
+                logger.info(f"Transcribing episode: {episode.title}")
+                try:
+                    transcribe_episode(episode.id)
+                    break
+                except Exception as e:
+                    logger.error(f"Failed to transcribe episode {episode.id}: {str(e)}")
+                    continue
+    else:
+        logger.warning("No episodes found for this feed")
+    
+    return podcast
 
-    # Load the YAML file containing RSS feed URLs
+def main() -> None:
+    """Main entry point for podscribe."""
+    # Load environment variables
+    load_dotenv()
+    
+    # Initialize database
+    init_db()
+    
+    # Load RSS feed URLs
     feeds_path = os.path.join(os.path.dirname(__file__), 'feeds.yaml')
     try:
         with open(feeds_path, 'r') as f:
             feeds_data = yaml.safe_load(f)
     except FileNotFoundError:
-        print(f"Error: {feeds_path} not found.")
+        logger.error(f"Error: {feeds_path} not found")
         return
 
     rss_feeds = feeds_data.get("rss_feeds", [])
     if not rss_feeds:
-        print("No RSS feeds found in the YAML file.")
+        logger.error("No RSS feeds found in the YAML file")
         return
 
-    # Process each RSS feed
+    # Process each feed
     for rss_url in rss_feeds:
-        print(f"\nProcessing feed: {rss_url}")
-
-        # Parse the podcast RSS feed
-        podcast = parse_rss_feed(rss_url)
-
-        # List all episodes for this podcast
-        episodes = list_episodes(rss_url)
-
-        if episodes:
-            # Transcribe the first episode that hasn't been transcribed yet
-            for episode in episodes:
-                if not episode.transcript:
-                    print(f"\nTranscribing episode: {episode.title}")
-                    transcribe_episode(episode.id)
-                    break
-        else:
-            print("No episodes found for this feed.")
+        process_feed(rss_url)
 
 if __name__ == "__main__":
     main()

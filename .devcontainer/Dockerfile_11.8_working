@@ -33,11 +33,11 @@ RUN update-alternatives --set python3 /usr/bin/python3.10
 RUN python3 -m pip install --upgrade pip
 
 # Install PyTorch with CUDA support
-RUN pip3 install torch torchvision torchaudio feedparser python-dotenv sqlalchemy pyyaml
+RUN pip3 install --no-cache-dir torch torchvision torchaudio feedparser python-dotenv sqlalchemy pyyaml
 
 # Install Whisper and its dependencies
-RUN pip3 install git+https://github.com/m-bain/whisperx.git
-RUN pip3 install faster-whisper
+RUN pip3 install --no-cache-dir git+https://github.com/m-bain/whisperx.git
+RUN pip3 install --no-cache-dir faster-whisper
 
 # Set the working directory
 WORKDIR /workspace

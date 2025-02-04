@@ -1,11 +1,13 @@
-# podscribe/podcast_rss.py
+import logging
 import feedparser
 import requests
 from datetime import datetime
+from typing import Optional
 from podscribe.models import Podcast, Episode
 from podscribe.database import SessionLocal
 from podscribe.config import logger
 
+<<<<<<< HEAD
 def parse_rss_feed(rss_url):
     """Parse a podcast RSS feed and store episodes in database."""
 
@@ -34,55 +36,81 @@ def parse_rss_feed(rss_url):
         logger.error(f"Network error while fetching {rss_url}: {e}")
         return None
 
+=======
+logger = logging.getLogger(__name__)
+
+def parse_rss_feed(rss_url: str) -> Optional[Podcast]:
+    """
+    Parse a podcast RSS feed and store episodes in database.
+>>>>>>> f45f908 (from server)
     
-    with SessionLocal() as session:
-        # First, get or create the podcast
-        podcast = session.query(Podcast).filter_by(rss_url=rss_url).first()
+    Args:
+        rss_url: URL of the podcast RSS feed
         
-        if not podcast:
-            # Create new podcast
-            podcast = Podcast(
-                title=feed.feed.title,
-                rss_url=rss_url,
-                last_updated=datetime.now()
-            )
-            session.add(podcast)
-            # Commit to get the podcast ID
-            session.commit()
-        
-        # Now process episodes
-        for entry in feed.entries:
-            # Query using podcast_id instead of podcast object
-            existing_episode = session.query(Episode).filter_by(
-                podcast_id=podcast.id,
-                title=entry.title
-            ).first()
+    Returns:
+        Optional[Podcast]: The created or updated Podcast object
+    """
+    try:
+        feed = feedparser.parse(rss_url)
+        if feed.bozo:  # feedparser's flag for malformed feeds
+            logger.error(f"Feed error for {rss_url}: {feed.bozo_exception}")
+            return None
             
-            if not existing_episode:
-                # Find audio URL in links
-                audio_url = None
-                for link in entry.links:
-                    if hasattr(link, 'type') and link.type.startswith('audio/'):
-                        audio_url = link.href
-                        break
+        with SessionLocal() as session:
+            # Get or create podcast
+            podcast = session.query(Podcast).filter_by(rss_url=rss_url).first()
+            
+            if not podcast:
+                logger.info(f"Creating new podcast from feed: {feed.feed.title}")
+                podcast = Podcast(
+                    title=feed.feed.title,
+                    rss_url=rss_url,
+                    last_updated=datetime.now()
+                )
+                session.add(podcast)
+                session.commit()  # Commit to get podcast.id
+            
+            # Process episodes
+            new_episodes = 0
+            for entry in feed.entries:
+                # Look for existing episode
+                existing = session.query(Episode).filter_by(
+                    podcast_id=podcast.id,
+                    title=entry.title
+                ).first()
                 
-                if audio_url:
-                    try:
-                        published_date = datetime(*entry.published_parsed[:6])
-                    except (TypeError, AttributeError):
-                        # Fallback to current time if date parsing fails
-                        published_date = datetime.now()
+                if not existing:
+                    # Find audio URL
+                    audio_url = None
+                    for link in entry.links:
+                        if hasattr(link, 'type') and link.type.startswith('audio/'):
+                            audio_url = link.href
+                            break
                     
-                    new_episode = Episode(
-                        podcast_id=podcast.id,
-                        title=entry.title,
-                        audio_url=audio_url,
-                        published_date=published_date
-                    )
-                    session.add(new_episode)
-        
-        # Update podcast last_updated timestamp
-        podcast.last_updated = datetime.now()
-        session.commit()
-        
-        return podcast
+                    if audio_url:
+                        try:
+                            published_date = datetime(*entry.published_parsed[:6])
+                        except (TypeError, AttributeError):
+                            published_date = datetime.now()
+                        
+                        new_episode = Episode(
+                            podcast_id=podcast.id,
+                            title=entry.title,
+                            audio_url=audio_url,
+                            published_date=published_date
+                        )
+                        session.add(new_episode)
+                        new_episodes += 1
+            
+            if new_episodes > 0:
+                logger.info(f"Added {new_episodes} new episodes for {podcast.title}")
+                
+            # Update podcast timestamp
+            podcast.last_updated = datetime.now()
+            session.commit()
+            
+            return podcast
+            
+    except Exception as e:
+        logger.error(f"Failed to parse RSS feed {rss_url}: {str(e)}")
+        return None

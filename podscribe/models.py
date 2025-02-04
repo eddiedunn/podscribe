@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship
 Base = declarative_base()
 
 class Podcast(Base):
+    """Represents a podcast feed and its metadata."""
     __tablename__ = "podcasts"
     id = Column(Integer, primary_key=True)
     title = Column(String)
@@ -13,6 +14,7 @@ class Podcast(Base):
     episodes = relationship("Episode", back_populates="podcast")
 
 class Episode(Base):
+    """Represents a podcast episode and its transcription."""
     __tablename__ = "episodes"
     id = Column(Integer, primary_key=True)
     podcast_id = Column(Integer, ForeignKey("podcasts.id"))
@@ -20,4 +22,5 @@ class Episode(Base):
     audio_url = Column(String)
     published_date = Column(DateTime)
     transcript = Column(Text)
+    # Add any podcast-specific fields here
     podcast = relationship("Podcast", back_populates="episodes")
