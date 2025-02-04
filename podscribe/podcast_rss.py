@@ -1,12 +1,39 @@
 # podscribe/podcast_rss.py
 import feedparser
+import requests
 from datetime import datetime
 from podscribe.models import Podcast, Episode
 from podscribe.database import SessionLocal
+from podscribe.config import logger
 
 def parse_rss_feed(rss_url):
     """Parse a podcast RSS feed and store episodes in database."""
-    feed = feedparser.parse(rss_url)
+
+    try:
+        # Fetch the RSS feed manually
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept-Charset": "utf-8",  # Request UTF-8
+        }
+        response = requests.get(rss_url, headers=headers, timeout=10)
+
+        # Force UTF-8 encoding (ignoring errors if needed)
+        response.encoding = "utf-8"
+        feed_data = response.text  # Or response.content.decode("utf-8", errors="ignore")
+
+        # Parse the feed with feedparser
+        feed = feedparser.parse(feed_data)
+
+        # Check for malformed feeds
+        if feed.bozo:
+            logger.error(f"Feed error for {rss_url}: {feed.bozo_exception}")
+
+
+
+    except requests.RequestException as e:
+        logger.error(f"Network error while fetching {rss_url}: {e}")
+        return None
+
     
     with SessionLocal() as session:
         # First, get or create the podcast

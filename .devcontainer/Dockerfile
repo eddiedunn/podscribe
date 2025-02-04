@@ -25,7 +25,7 @@ RUN python3 -m pip install --upgrade pip
 
 # Install your Python dependencies (here combined into one layer to reduce image size)
 RUN python3 -m pip install \
-    torch torchvision torchaudio \
+    torch torchvision torchaudio requests \
     feedparser python-dotenv sqlalchemy pyyaml \
     git+https://github.com/m-bain/whisperx.git \
     faster-whisper

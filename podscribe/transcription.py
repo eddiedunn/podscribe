@@ -4,21 +4,13 @@ from diarized_transcriber import (
     MediaSource,
     TranscriptionError
 )
-import logging
+
 import sys
 from podscribe.database import SessionLocal
 from podscribe.models import Episode
 from podscribe.config import WHISPERX_MODEL
 
-# Set up logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+
 
 def transcribe_episode(episode_id: int) -> None:
     """Transcribe an episode using diarized_transcriber."""
